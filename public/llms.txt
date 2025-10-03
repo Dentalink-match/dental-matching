@@ -1,0 +1,33 @@
+## Pages
+- [- DentaLink Admin](/admincaseform): No description available
+- [""-এর জন্য প্রস্তাব দেখুন - ডেন্টালিন্ক](/proposalview): No description available
+- [Add New User - DentaLink Admin](/adminadduser): Create new user accounts from the admin dashboard.
+- [Admin Dashboard - DentaLink](/admindashboard): Admin dashboard for DentaLink.
+- [Admin Settings - DentaLink](/adminsettings): Manage platform settings.
+- [Advanced Analytics - DentaLink Admin](/adminadvancedanalytics): No description available
+- [Appointment Management - DentaLink Admin](/adminappointments): No description available
+- [Area Analytics - DentaLink Admin](/adminareaanalytics): No description available
+- [Chat for Case  - DentaLink](/chat): No description available
+- [Compare Doctors for "" - DentaLink](/doctorcomparison): No description available
+- [DentaLink Smart Matching System - Connect with the Best Dental Professionals](/landing): Find the perfect dental professional for your needs with our AI-powered smart matching system. Compare doctors, get treatment proposals, and make informed decisions.
+- [Download Reports - DentaLink Admin](/adminreports): No description available
+- [E-commerce Management - Admin](/adminecommerce): Manage products for Doctor and Patient shops.
+- [Edit Profile:  - DentaLink Admin](/adminuserprofile): No description available
+- [Edit Proposal - DentaLink Admin](/adminproposaledit): No description available
+- [Financial Dashboard - DentaLink Admin](/adminfinance): No description available
+- [Forgot Password - DentaLink](/forgotpassword): No description available
+- [HR Management - DentaLink Admin](/adminhrmanagement): No description available
+- [Investment Hub - DentaLink Admin](/admininvestment): No description available
+- [Issue Management - DentaLink Admin](/adminissues): No description available
+- [Login - DentaLink Smart Matching System](/login): Login to your DentaLink account to access your dashboard and manage your dental care journey.
+- [My Profile - DentaLink](/profile): Manage your DentaLink profile and account settings.
+- [My Revenue - DentaLink](/revenueanalytics): No description available
+- [Payroll Management - DentaLink Admin](/adminpayroll): No description available
+- [Platform Revenue - DentaLink Admin](/adminrevenueanalytics): No description available
+- [Proposals for "" - Admin](/admincaseproposals): No description available
+- [Register - DentaLink Smart Matching System](/register): Join DentaLink as a patient or dental professional. Create your account to start your dental care journey.
+- [Reset Password - DentaLink](/resetpassword): No description available
+- [আমার ওয়ালেট - ডেন্টালিন্ক](/wallet): No description available
+- [একটি কেস জমা দিন - ডেন্টালিন্ক](/casesubmission): যাচাইকৃত ডাক্তারদের কাছ থেকে চিকিৎসার প্রস্তাব পেতে আপনার ডেন্টাল কেস জমা দিন।
+- [ডাক্তার ড্যাশবোর্ড - ডেন্টালিন্ক](/doctordashboard): ডাক্তারদের জন্য বিশ্লেষণ এবং ব্যবস্থাপনা কেন্দ্র।
+- [রোগীর ড্যাশবোর্ড - ডেন্টালিন্ক](/patientdashboard): আপনার ডেন্টাল কেস এবং প্রস্তাবগুলো পরিচালনা করুন।
