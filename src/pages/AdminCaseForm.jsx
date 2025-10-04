@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
     import { useParams, useNavigate } from 'react-router-dom';
     import { Helmet } from 'react-helmet';
@@ -65,6 +64,7 @@ import React, { useState, useEffect, useMemo } from 'react';
             treatment_end_photo: null,
         });
         const [newImages, setNewImages] = useState([]);
+        const [removedImages, setRemovedImages] = useState([]);
         const [selectedDoctors, setSelectedDoctors] = useState([]);
         const [searchTerm, setSearchTerm] = useState('');
         const [lightboxImage, setLightboxImage] = useState(null);
@@ -92,7 +92,7 @@ import React, { useState, useEffect, useMemo } from 'react';
         const doctors = useMemo(() => users.filter(u => u.role === 'doctor'), [users]);
 
         const patientLocation = useMemo(() => {
-            const patient = users.find(u => u.id === caseData.patient_id);
+            const patient = users.find(u => u.auth_id === caseData.patient_id);
             if (patient && patient.latitude && patient.longitude) {
                 return { lat: patient.latitude, lon: patient.longitude };
             }
@@ -133,6 +133,11 @@ import React, { useState, useEffect, useMemo } from 'react';
             setNewImages(prev => prev.filter((_, i) => i !== index));
         };
 
+        const removeExistingImage = (url) => {
+            setCaseData(prev => ({ ...prev, images: prev.images.filter(imgUrl => imgUrl !== url) }));
+            setRemovedImages(prev => [...prev, url]);
+        };
+
         const handleDoctorSelect = (doctorId) => {
             setSelectedDoctors(prev =>
                 prev.includes(doctorId)
@@ -149,11 +154,12 @@ import React, { useState, useEffect, useMemo } from 'react';
             }
 
             try {
-                const patient = patients.find(p => p.id === caseData.patient_id);
+                const patient = patients.find(p => p.auth_id === caseData.patient_id);
                 const dataToSave = {
                     ...caseData,
                     patient_name: patient?.name,
                     newImages: newImages,
+                    removedImages: removedImages,
                 };
 
                 if (isNewCase) {
@@ -252,7 +258,7 @@ import React, { useState, useEffect, useMemo } from 'react';
                                                     <SelectValue placeholder="Select a patient" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {patients.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.email})</SelectItem>)}
+                                                    {patients.map(p => <SelectItem key={p.auth_id} value={p.auth_id}>{p.name} ({p.email})</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -281,13 +287,13 @@ import React, { useState, useEffect, useMemo } from 'react';
                                                     <SelectValue placeholder="Select status" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="pending_assignment">অ্যাসাইনমেন্টের জন্য অপেক্ষারত</SelectItem>
-                                                    <SelectItem value="open">প্রস্তাবের জন্য উন্মুক্ত</SelectItem>
-                                                    <SelectItem value="proposal_accepted">প্রস্তাব গৃহীত</SelectItem>
-                                                    <SelectItem value="in-progress">চিকিৎসা শুরু</SelectItem>
-                                                    <SelectItem value="treatment_started">চলমান</SelectItem>
-                                                    <SelectItem value="completed">সম্পন্ন</SelectItem>
-                                                    <SelectItem value="cancelled">বাতিল</SelectItem>
+                                                    <SelectItem value="pending_assignment">Pending Assignment</SelectItem>
+                                                    <SelectItem value="open">Open for Proposals</SelectItem>
+                                                    <SelectItem value="proposal_accepted">Proposal Accepted</SelectItem>
+                                                    <SelectItem value="in-progress">In Progress</SelectItem>
+                                                    <SelectItem value="treatment_started">Treatment Started</SelectItem>
+                                                    <SelectItem value="completed">Completed</SelectItem>
+                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -297,14 +303,20 @@ import React, { useState, useEffect, useMemo } from 'react';
                                                 {caseData.images && caseData.images.map((url, index) => (
                                                     <div key={`existing-${index}`} className="relative group">
                                                         <img src={url} alt={`Attachment ${index + 1}`} className="h-24 w-full object-cover rounded-lg border" />
-                                                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => setLightboxImage(url)}>
-                                                            <Eye className="h-6 w-6 text-white" />
+                                                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Eye className="h-6 w-6 text-white cursor-pointer" onClick={() => setLightboxImage(url)} />
                                                         </div>
+                                                        <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removeExistingImage(url)}>
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
                                                     </div>
                                                 ))}
                                                 {newImages.map((file, index) => (
                                                     <div key={`new-${index}`} className="relative group">
                                                         <img src={URL.createObjectURL(file)} alt={`New attachment ${index + 1}`} className="h-24 w-full object-cover rounded-lg border" />
+                                                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => setLightboxImage(URL.createObjectURL(file))}>
+                                                            <Eye className="h-6 w-6 text-white" />
+                                                        </div>
                                                         <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removeNewImage(index)}>
                                                             <X className="h-4 w-4" />
                                                         </Button>
@@ -355,15 +367,15 @@ import React, { useState, useEffect, useMemo } from 'react';
                                         </div>
                                         <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
                                             {filteredDoctors.map(doctor => (
-                                                <div key={doctor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                                                <div key={doctor.auth_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                                                     <div className="flex items-center space-x-4">
                                                         <Checkbox
-                                                            id={`doc-${doctor.id}`}
-                                                            checked={selectedDoctors.includes(doctor.id)}
-                                                            onCheckedChange={() => handleDoctorSelect(doctor.id)}
+                                                            id={`doc-${doctor.auth_id}`}
+                                                            checked={selectedDoctors.includes(doctor.auth_id)}
+                                                            onCheckedChange={() => handleDoctorSelect(doctor.auth_id)}
                                                         />
                                                         <div>
-                                                            <Label htmlFor={`doc-${doctor.id}`} className="font-semibold">{doctor.name}</Label>
+                                                            <Label htmlFor={`doc-${doctor.auth_id}`} className="font-semibold">{doctor.name}</Label>
                                                             <p className="text-sm text-gray-500">{doctor.specialization || 'General Dentistry'}</p>
                                                         </div>
                                                     </div>
@@ -393,7 +405,7 @@ import React, { useState, useEffect, useMemo } from 'react';
                         </div>
                     </main>
                 </div>
-                <ImageLightbox imageUrl={lightboxImage} open={!!lightboxImage} onOpenChange={setLightboxImage} />
+                <ImageLightbox imageUrl={lightboxImage} onOpenChange={setLightboxImage} />
             </>
         );
     };
