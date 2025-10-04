@@ -1,190 +1,133 @@
-
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 
-const SupabaseAuthContext = createContext();
-
-export const useAuth = () => {
-  const context = useContext(SupabaseAuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within a SupabaseAuthProvider');
-  }
-  return context;
-};
+const AuthContext = createContext(undefined);
 
 export const SupabaseAuthProvider = ({ children }) => {
   const { toast } = useToast();
-  const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = useCallback(async (authUser) => {
+  const fetchUserData = useCallback(async (authUser, abortSignal) => {
     if (!authUser) return null;
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('auth_id', authUser.id)
-        .single();
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching user profile:', error);
-        return null;
-      }
+        .single()
+        .abortSignal(abortSignal);
+      if (error && error.name !== 'AbortError') throw error;
       return data;
     } catch (error) {
-      console.error('Catched error fetching user profile:', error);
+      if (error.name !== 'AbortError') {
+        console.error('Error fetching user data:', error);
+      }
       return null;
     }
   }, []);
 
   useEffect(() => {
-    const getInitialSession = async () => {
-        try {
-            const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("Error getting initial session:", error.message);
-                if (error.message.includes("Invalid Refresh Token")) {
-                    await supabase.auth.signOut();
-                }
-                setSession(null);
-                setUser(null);
-            } else {
-                setSession(initialSession);
-                if (initialSession?.user) {
-                    const profile = await fetchUserProfile(initialSession.user);
-                    setUser(profile);
-                } else {
-                    setUser(null);
-                }
-            }
-        } catch (e) {
-            console.error("Catastrophic error in getInitialSession:", e);
-            setSession(null);
-            setUser(null);
-        } finally {
-            setLoading(false);
-        }
-    };
-    getInitialSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN') {
+    let isMounted = true;
+    setLoading(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted) {
         setSession(session);
-        if (session?.user) {
-          const profile = await fetchUserProfile(session.user);
-          setUser(profile);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setUser(null);
-      } else if (event === 'TOKEN_REFRESHED') {
-        setSession(session);
+        setUser(session?.user ?? null);
       }
-      setLoading(false);
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        if (isMounted) {
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+          if (_event === 'SIGNED_OUT') {
+            setUserData(null);
+          }
+        }
+      }
+    );
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile]);
+  }, []);
 
-  const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast({ variant: "destructive", title: "Login Failed", description: error.message });
-    }
-    return { data, error };
-  };
-
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({ variant: "destructive", title: "Logout Failed", description: error.message });
+  useEffect(() => {
+    const abortController = new AbortController();
+    if (user) {
+      setLoading(true);
+      fetchUserData(user, abortController.signal).then(data => {
+        setUserData(data);
+        setLoading(false);
+      });
     } else {
-      setUser(null);
-      setSession(null);
+      setUserData(null);
+      setLoading(false);
+    }
+    return () => {
+      abortController.abort();
+    };
+  }, [user, fetchUserData]);
+
+  const signUp = useCallback(async (email, password, options) => {
+    const { error } = await supabase.auth.signUp({ email, password, options });
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Sign up Failed",
+        description: error.message || "Something went wrong",
+      });
     }
     return { error };
-  };
+  }, [toast]);
 
-  const signUp = async (userData) => {
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-    });
-
-    if (authError) {
-      toast({ variant: "destructive", title: "Registration Failed", description: authError.message });
-      return { error: authError };
-    }
-
-    if (authData.user) {
-      const profileData = {
-        ...userData,
-        auth_id: authData.user.id,
-        email: userData.email,
-        is_verified: userData.role === 'patient',
-        status: 'active',
-      };
-      delete profileData.password;
-
-      const { data: newProfile, error: profileError } = await supabase
-        .from('users')
-        .insert(profileData)
-        .select()
-        .single();
-
-      if (profileError) {
-        toast({ variant: "destructive", title: "Profile Creation Failed", description: profileError.message });
-        await supabase.auth.signOut();
-        return { error: profileError };
-      }
-      
-      if (newProfile.role !== 'doctor') {
-        setUser(newProfile);
-      }
-      return { user: newProfile };
-    }
-    return {};
-  };
-  
-  const sendPasswordResetEmail = async (email) => {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+  const signIn = useCallback(async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-    } else {
-        toast({ title: "Check your email", description: "A password reset link has been sent to your email address." });
+      toast({
+        variant: "destructive",
+        title: "Sign in Failed",
+        description: error.message || "Something went wrong",
+      });
     }
     return { data, error };
-  };
+  }, [toast]);
 
-  const updateUserPassword = async (newPassword) => {
-    const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+  const signOut = useCallback(async () => {
+    const { error } = await supabase.auth.signOut();
     if (error) {
-        toast({ variant: "destructive", title: "Error", description: error.message });
-    } else {
-        toast({ title: "Success", description: "Your password has been updated successfully." });
+      toast({
+        variant: "destructive",
+        title: "Sign out Failed",
+        description: error.message || "Something went wrong",
+      });
     }
-    return { data, error };
-  };
+    return { error };
+  }, [toast]);
 
-  const value = {
-    user,
+  const value = useMemo(() => ({
+    user: user,
+    userData,
     session,
     loading,
+    signUp,
     signIn,
     signOut,
-    signUp,
-    sendPasswordResetEmail,
-    updateUserPassword,
-  };
+  }), [user, userData, session, loading, signUp, signIn, signOut]);
 
-  return (
-    <SupabaseAuthContext.Provider value={value}>
-      {children}
-    </SupabaseAuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within a SupabaseAuthProvider');
+  }
+  return context;
 };
